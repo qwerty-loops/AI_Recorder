@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator, Alert, PermissionsAndroid, Platform, Image, Modal, FlatList } from 'react-native';
+import { View, StyleSheet, Pressable, ActivityIndicator, Alert, PermissionsAndroid, Platform, Image, Modal, FlatList, Text } from 'react-native';
 import { Camera, useCameraDevices } from 'react-native-vision-camera';
 import RNFS from 'react-native-fs';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Video from 'react-native-video';
 
 const CameraScreen = () => {
@@ -196,7 +195,7 @@ const CameraScreen = () => {
                   source={{ uri: item.path }}
                   style={styles.galleryMedia}
                   muted
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
               ) : (
                 <Image
@@ -211,22 +210,22 @@ const CameraScreen = () => {
       </View>
       <Modal visible={isFullScreenVisible} transparent>
         <View style={styles.fullScreenContainer}>
-          {currentFullScreenMedia && currentFullScreenMedia.type === 'video' ? (
+          {currentFullScreenMedia?.type === 'video' ? (
             <Video
               source={{ uri: currentFullScreenMedia.path }}
               style={styles.fullScreenMedia}
               controls
               resizeMode="contain"
             />
-          ) : currentFullScreenMedia ? (
+          ) : (
             <Image
-              source={{ uri: `file://${currentFullScreenMedia.path}` }}
+              source={{ uri: `file://${currentFullScreenMedia?.path}` }}
               style={styles.fullScreenMedia}
               resizeMode="contain"
             />
-          ) : null}
+          )}
           <Pressable onPress={closeFullScreen} style={styles.closeButton}>
-            <MaterialIcons name="close" size={30} color="white" />
+          <Text style={styles.closeText}>X</Text>
           </Pressable>
         </View>
       </Modal>
@@ -292,6 +291,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 40,
     right: 20,
+  },
+  closeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
   },
 });
 
