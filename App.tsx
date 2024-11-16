@@ -1,8 +1,41 @@
+// App.tsx
 import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import SplashScreen from './SplashScreen';
+import MainMenuScreen from './MainMenuScreen';
+import AudioRecorderScreen from './AudioRecorderScreen';
 import CameraScreen from './CameraScreen';
 
+const Stack = createStackNavigator();
+
 const App = () => {
-  return <CameraScreen />;
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="SplashScreen">
+      <Stack.Screen
+          name="SplashScreen"
+          component={SplashScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MainMenu"
+          component={MainMenuScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AudioRecorderScreen"
+          component={AudioRecorderScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CameraScreen"
+          component={CameraScreen}
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 };
 
 export default App;
