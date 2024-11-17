@@ -124,7 +124,7 @@ const CameraScreen = () => {
     longPressTimeout.current = setTimeout(() => {
       setRecordingMode(true);
       startRecording();
-    }, 3000);
+    }, 2000);
   };
 
   const handlePressOut = () => {

@@ -6,6 +6,7 @@ import SplashScreen from './SplashScreen';
 import MainMenuScreen from './MainMenuScreen';
 import AudioRecorderScreen from './AudioRecorderScreen';
 import CameraScreen from './CameraScreen';
+import RecordingsListScreen from './RecordingsListScreen';
 
 const Stack = createStackNavigator();
 
@@ -33,6 +34,11 @@ const App = () => {
           component={CameraScreen}
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="RecordingsListScreen"
+          component={RecordingsListScreen}
+          options={{ headerShown: false }}
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );

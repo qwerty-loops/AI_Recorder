@@ -18,6 +18,12 @@ const MainMenuScreen = ({ navigation }) => {
       >
         <Text style={styles.buttonText}>Record Video</Text>
       </Pressable>
+      <Pressable
+      style={styles.button}
+      onPress={() => navigation.navigate('RecordingsListScreen')}
+      >
+      <Text style={styles.buttonText}>View Recordings</Text>
+      </Pressable>
     </View>
   );
 };
