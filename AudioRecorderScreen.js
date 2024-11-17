@@ -10,6 +10,7 @@ import {
   Platform, 
   PermissionsAndroid 
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import RNFS from 'react-native-fs';
 
@@ -19,10 +20,13 @@ const AudioRecorderScreen = () => {
   const [playing, setPlaying] = useState(false);
   const [recordingsList, setRecordingsList] = useState([]);
   const [currentPlaybackUri, setCurrentPlaybackUri] = useState(null);
+  const [currentPlaybackName, setCurrentPlaybackName] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [recordTime, setRecordTime] = useState('00:00:00');
   const [playTime, setPlayTime] = useState('00:00:00');
   const [duration, setDuration] = useState('00:00:00');
+  const [sliderValue, setSliderValue] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
 
   const audioRecorderPlayer = useRef(new AudioRecorderPlayer()).current;
 
@@ -81,7 +85,7 @@ const AudioRecorderScreen = () => {
 
   const startRecording = async () => {
     try {
-      const path = `${RNFS.DownloadDirectoryPath}/Recording_${Date.now()}.mp3`;
+      const path = `${RNFS.DownloadDirectoryPath}/recording_${Date.now()}.mp3`;
       await audioRecorderPlayer.startRecorder(path);
       setRecording(true);
       setPaused(false);
@@ -96,19 +100,14 @@ const AudioRecorderScreen = () => {
 
   const pauseRecording = async () => {
     try {
-      await audioRecorderPlayer.pauseRecorder();
-      setPaused(true);
+      if (paused) {
+        await audioRecorderPlayer.resumeRecorder();
+      } else {
+        await audioRecorderPlayer.pauseRecorder();
+      }
+      setPaused(!paused);
     } catch (error) {
-      Alert.alert('Pause Error', error.message);
-    }
-  };
-
-  const resumeRecording = async () => {
-    try {
-      await audioRecorderPlayer.resumeRecorder();
-      setPaused(false);
-    } catch (error) {
-      Alert.alert('Resume Error', error.message);
+      Alert.alert('Pause Recording Error', error.message);
     }
   };
 
@@ -120,26 +119,34 @@ const AudioRecorderScreen = () => {
       setPaused(false);
       setRecordTime('00:00:00');
 
+      const fileName = `recording_${Date.now()}.mp3`;
       setRecordingsList((prevList) => [
         ...prevList,
-        { uri: result, name: `Recording_${Date.now()}.mp3` },
+        { uri: result, name: fileName },
       ]);
     } catch (error) {
       Alert.alert('Stop Recording Error', error.message);
     }
   };
 
-  const startPlaying = async (uri) => {
+  const startPlaying = async (uri, name) => {
     try {
       setCurrentPlaybackUri(uri);
+      setCurrentPlaybackName(name);
       setModalVisible(true);
       await audioRecorderPlayer.startPlayer(uri);
       setPlaying(true);
 
       audioRecorderPlayer.addPlayBackListener((e) => {
-        setPlayTime(audioRecorderPlayer.mmssss(Math.floor(e.currentPosition)));
-        setDuration(audioRecorderPlayer.mmssss(Math.floor(e.duration)));
-        if (e.currentPosition === e.duration) {
+        const currentPos = Math.floor(e.currentPosition);
+        const totalDur = Math.floor(e.duration);
+
+        setPlayTime(audioRecorderPlayer.mmssss(currentPos));
+        setDuration(audioRecorderPlayer.mmssss(totalDur));
+        setSliderValue(currentPos / totalDur);
+        setTotalDuration(totalDur);
+
+        if (currentPos >= totalDur) {
           stopPlaying();
         }
       });
@@ -153,25 +160,57 @@ const AudioRecorderScreen = () => {
       await audioRecorderPlayer.stopPlayer();
       audioRecorderPlayer.removePlayBackListener();
       setPlaying(false);
-      setModalVisible(false);
       setPlayTime('00:00:00');
+      setSliderValue(0);
     } catch (error) {
       Alert.alert('Stop Playback Error', error.message);
     }
   };
 
-  const onForwardPress = async () => {
-    await audioRecorderPlayer.seekToPlayer(Math.min(duration, playTime + 10000));
+  const togglePlayPause = async () => {
+    if (playing) {
+      console.log('Pausing playback');
+      await audioRecorderPlayer.pausePlayer();
+    } else {
+      console.log('Resuming playback');
+      await audioRecorderPlayer.startPlayer(currentPlaybackUri);
+    }
+    setPlaying(!playing);
   };
 
   const onRewindPress = async () => {
-    await audioRecorderPlayer.seekToPlayer(Math.max(0, playTime - 10000));
+    console.log('Rewind button pressed');
+    const currentPos = sliderValue * totalDuration;
+    const rewindTime = Math.max(currentPos - 10000, 0); // Rewind 10 seconds
+    console.log(`Rewinding to: ${rewindTime}`);
+    await audioRecorderPlayer.seekToPlayer(rewindTime);
+  };
+
+  const onForwardPress = async () => {
+    console.log('Forward button pressed');
+    const currentPos = sliderValue * totalDuration;
+    const forwardTime = Math.min(currentPos + 10000, totalDuration); // Forward 10 seconds
+    console.log(`Forwarding to: ${forwardTime}`);
+    await audioRecorderPlayer.seekToPlayer(forwardTime);
+  };
+
+  const onSliderValueChange = async (value) => {
+    console.log('Slider value changed:', value);
+    const seekTime = value * totalDuration;
+    console.log(`Seeking to: ${seekTime}`);
+    await audioRecorderPlayer.seekToPlayer(seekTime);
+    setSliderValue(value);
+    if (!playing) {
+      console.log('Resuming playback after slider scrub');
+      await audioRecorderPlayer.resumePlayer();
+      setPlaying(true);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.timerText}>
-        {recording ? `Recording: ${recordTime}` : playing ? `${playTime} / ${duration}` : ''}
+        {recording ? `Recording: ${recordTime}` : ''}
       </Text>
 
       {!recording && (
@@ -179,7 +218,7 @@ const AudioRecorderScreen = () => {
           data={recordingsList}
           keyExtractor={(item) => item.name}
           renderItem={({ item }) => (
-            <Pressable style={styles.playButton} onPress={() => startPlaying(item.uri)}>
+            <Pressable style={styles.playButton} onPress={() => startPlaying(item.uri, item.name)}>
               <Text style={styles.playButtonText}>{item.name}</Text>
             </Pressable>
           )}
@@ -189,14 +228,14 @@ const AudioRecorderScreen = () => {
 
       <View style={styles.controlButtons}>
         {recording && (
-          <>
-            <Pressable style={styles.controlButton} onPress={paused ? resumeRecording : pauseRecording}>
-              <Text style={styles.controlButtonText}>{paused ? 'Resume' : 'Pause'}</Text>
-            </Pressable>
-            <Pressable style={styles.controlButton} onPress={stopRecording}>
-              <Text style={styles.controlButtonText}>Stop</Text>
-            </Pressable>
-          </>
+          <Pressable style={styles.controlButton} onPress={stopRecording}>
+            <Text style={styles.controlButtonText}>Stop</Text>
+          </Pressable>
+        )}
+        {recording && (
+          <Pressable style={styles.controlButton} onPress={pauseRecording}>
+            <Text style={styles.controlButtonText}>{paused ? 'Resume' : 'Pause'}</Text>
+          </Pressable>
         )}
       </View>
 
@@ -211,22 +250,36 @@ const AudioRecorderScreen = () => {
 
       <Modal visible={modalVisible} animationType="slide" transparent={false}>
         <View style={styles.fullScreenPlayer}>
+          <Pressable style={styles.closeButton} onPress={() => setModalVisible(false)}>
+            <Text style={styles.closeButtonText}>X</Text>
+          </Pressable>
           <Text style={styles.playerTitle}>Now Playing</Text>
-          <Text style={styles.playerText}>{playTime} / {duration}</Text>
+          <Text style={styles.playerFileName}>{currentPlaybackName}</Text>
+          <Slider
+            style={styles.slider}
+            minimumValue={0}
+            maximumValue={1}
+            value={sliderValue}
+            minimumTrackTintColor="#1DB954"
+            maximumTrackTintColor="#d3d3d3"
+            thumbTintColor="#1DB954"
+            onSlidingComplete={onSliderValueChange}
+          />
+          <View style={styles.timestampContainer}>
+            <Text style={styles.timeElapsed}>{playTime}</Text>
+            <Text style={styles.totalTime}>{duration}</Text>
+          </View>
           <View style={styles.playbackControls}>
             <Pressable style={styles.playbackButton} onPress={onRewindPress}>
               <Text style={styles.buttonText}>Rewind 10s</Text>
             </Pressable>
-            <Pressable style={styles.playbackButton} onPress={() => (playing ? stopPlaying() : startPlaying(currentPlaybackUri))}>
+            <Pressable style={styles.playbackButton} onPress={togglePlayPause}>
               <Text style={styles.buttonText}>{playing ? 'Pause' : 'Play'}</Text>
             </Pressable>
             <Pressable style={styles.playbackButton} onPress={onForwardPress}>
               <Text style={styles.buttonText}>Forward 10s</Text>
             </Pressable>
           </View>
-          <Pressable style={styles.modalButton} onPress={stopPlaying}>
-            <Text style={styles.modalButtonText}>Close Player</Text>
-          </Pressable>
         </View>
       </Modal>
     </View>
@@ -236,7 +289,7 @@ const AudioRecorderScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -267,8 +320,9 @@ const styles = StyleSheet.create({
     padding: 10,
     marginVertical: 5,
     borderRadius: 5,
+    marginRight: 10,
     alignItems: 'center',
-    width: '80%',
+    width: '100%',
   },
   playButtonText: {
     color: 'white',
@@ -284,8 +338,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#007BFF',
     padding: 10,
     borderRadius: 5,
-    width: '45%',
+    marginHorizontal: 5,
     alignItems: 'center',
+    width: '45%',
   },
   controlButtonText: {
     color: 'white',
@@ -293,46 +348,65 @@ const styles = StyleSheet.create({
   },
   fullScreenPlayer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: 'black',
   },
   playerTitle: {
-    color: '#fff',
+    color: 'black',
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 10,
   },
-  playerText: {
-    color: '#fff',
+  playerFileName: {
+    color: 'grey',
     fontSize: 18,
     marginBottom: 20,
   },
+  slider: {
+    width: '90%',
+    height: 40,
+    marginBottom: 10,
+  },
+  timestampContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '90%',
+    marginBottom: 10,
+  },
+  timeElapsed: {
+    color: 'black',
+    fontSize: 14,
+  },
+  totalTime: {
+    color: 'black',
+    fontSize: 14,
+  },
   playbackControls: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '80%',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: 20,
   },
   playbackButton: {
     backgroundColor: '#007BFF',
     padding: 10,
     borderRadius: 5,
+    marginHorizontal: 5,
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
-  },
-  modalButton: {
-    backgroundColor: 'red',
-    padding: 15,
-    borderRadius: 5,
-    width: '50%',
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: 'white',
-    fontSize: 18,
   },
 });
 
