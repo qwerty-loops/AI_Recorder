@@ -2,11 +2,11 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import SplashScreen from './SplashScreen';
-import MainMenuScreen from './MainMenuScreen';
-import AudioRecorderScreen from './AudioRecorderScreen';
-import CameraScreen from './CameraScreen';
-import RecordingsListScreen from './RecordingsListScreen';
+import SplashScreen from './Screens/SplashScreen';
+import MainMenuScreen from './Screens/MainMenuScreen';
+import AudioRecorderScreen from './Screens/AudioRecorderScreen';
+import CameraScreen from './Screens/CameraScreen';
+import RecordingsListScreen from './Screens/RecordingsListScreen';
 
 const Stack = createStackNavigator();
 
